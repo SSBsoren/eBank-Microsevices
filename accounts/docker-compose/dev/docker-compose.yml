@@ -1,0 +1,98 @@
+version: '3.8'
+services:
+  configserver:
+    image: sagen0211/accounts:latest
+    ports:
+    - 8008:8008
+    networks:
+    - sagen-network
+  eurekaserver:
+    image: sagen0211/eureka-server
+    ports:
+    - 9009:9009
+    networks:
+    - sagen-network
+    depends_on:
+    - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: http://configserver:8008/
+  accounts:
+    container_name: accounts-service
+    image: sagen0211/accounts:latest
+    build: .
+    ports:
+    - 8001:8001
+    links:
+    - db
+    depends_on:
+    - configserver
+    - eurekaserver
+    - db
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: http://configserver:8008/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eurekaserver:9009/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bank_services
+  db:
+    image: postgres
+    ports:
+    - 5432:5432
+    environment:
+    - POSTGRES_PASSWORD=docker@2020
+    - POSTGRES_USER=postgres
+    - POSTGRES_DB=bank_services
+  loans:
+    container_name: loans-service
+    image: sagen0211/loans:latest
+    ports:
+    - 8002:8002
+    networks:
+    - sagen-network
+    depends_on:
+    - configserver
+    - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: http://configserver:8008/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eurekaserver:9009/eureka/
+  cards:
+    container_name: cards-service
+    image: sagen0211/cards:latest
+    ports:
+    - 8003:8003
+    networks:
+    - sagen-network
+    depends_on:
+    - configserver
+    - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: http://configserver:8008/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eurekaserver:9009/eureka/
+networks:
+  sagen-network:

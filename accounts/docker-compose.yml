@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  configserver:
+    container_name: configserver
+    image: sagen0211/configserver:latest
+    ports:
+    - "8008:8008"
+    networks:
+    - sagen-network
+  eurekaserver:
+    container_name: eurekaserver
+    image: sagen0211/eurekaserver:latest
+    ports:
+    - "9009:9009"
+    networks:
+    - sagen-network
+    depends_on:
+    - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 40s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8008/
+  accounts:
+    container_name: accounts-service
+    image: sagen0211/accounts:23112022
+    build: .
+    ports:
+    - "8001:8001"
+    links:
+    - postgresqldb
+    networks:
+    - sagen-network
+    depends_on:
+    - configserver
+    - eurekaserver
+    - postgresqldb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 50s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: http://configserver:8008/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eurekaserver:9009/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bank_services
+  postgresqldb:
+    container_name: postgresqldb
+    image: postgres
+    ports:
+    - "5432:5432"
+    environment:
+    - POSTGRES_PASSWORD=docker@2020
+    - POSTGRES_USER=postgres
+    - POSTGRES_DB=bank_services
+networks:
+  sagen-network:

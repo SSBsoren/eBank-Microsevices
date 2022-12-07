@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+
+  configserver:
+    image: sagen0211/accounts:latest
+    ports:
+      - "8008:8008"
+    networks:
+      - sagen-network
+
+  accounts:
+    container_name: accounts-service
+    image: sagen0211/accounts:latest
+    build: .
+    ports:
+      - "8001:8001"
+    links:
+      - db
+    depends_on:
+      - db
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bank_services
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8008/
+
+
+  db:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=docker@2020
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=bank_services
+
+  loans:
+    container_name: loans-service
+    image: sagen0211/loans:latest
+    ports:
+      - "8002:8002"
+    networks:
+      - sagen-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8008/
+
+
+  cards:
+    container_name: cards-service
+    image: sagen0211/cards:latest
+    ports:
+      - "8003:8003"
+    networks:
+      - sagen-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8008/
+
+
+networks:
+  sagen-network:
